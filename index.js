@@ -9,12 +9,7 @@ const cookieParser = require("cookie-parser");
 const cors = require("cors");
 require("dotenv").config();
 
-app.use(
-  cors({
-    origin: process.env.URL,
-    credentials: true,
-  })
-);
+app.use(cors());
 
 app.use(cookieParser());
 const mongoose = require("mongoose");
