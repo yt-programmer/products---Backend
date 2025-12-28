@@ -6,10 +6,12 @@ const {
   register,
   login,
   logout,
+  me,
 } = require("../controllers/users.controller");
 const router = express.Router();
 
 router.route("/").get(verifyToken, to("admin"), getAllUsers);
+router.get("/me", verifyToken, me);
 
 router.post("/register", register);
 

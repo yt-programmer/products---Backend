@@ -8,10 +8,15 @@ const mailRouter = require("./routes/sendMail.route");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 require("dotenv").config();
-
-app.use(cors());
-
 app.use(cookieParser());
+
+app.use(
+  cors({
+    credentials: true,
+    origin: process.env.URL,
+  })
+);
+
 const mongoose = require("mongoose");
 app.use(express.json());
 app.use("/api/products", productsRouter);

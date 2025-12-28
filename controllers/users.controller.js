@@ -47,10 +47,11 @@ const register = asyncWrapper(async (req, res, next) => {
       expiresIn: "1d",
     }
   );
+
   res.cookie("token", jwt, {
     httpOnly: true,
-    secure: true,
-    sameSite: "None",
+    secure: false,
+    sameSite: "lax",
     maxAge: 24 * 60 * 60 * 1000,
   });
   await newUser.save();
@@ -88,12 +89,15 @@ const login = asyncWrapper(async (req, res, next) => {
       expiresIn: "1d",
     }
   );
+
   res.cookie("token", jwt, {
     httpOnly: true,
-    secure: true,
-    sameSite: "None",
+    secure: false,
+    sameSite: "Lax",
     maxAge: 24 * 60 * 60 * 1000,
+    path: "/api",
   });
+
   res.status(200).json({
     status: "success",
     data: {
@@ -115,4 +119,19 @@ const logout = asyncWrapper(async (req, res, next) => {
     },
   });
 });
-module.exports = { login, register, getAllUsers, logout };
+
+const me = asyncWrapper(async (req, res, next) => {
+  const user = req.currentUser;
+
+  if (!user) {
+    return next(appError.create("Unauthorized", 401, httpsStatusText.FAIL));
+  }
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      user,
+    },
+  });
+});
+module.exports = { login, register, getAllUsers, logout, me };
