@@ -47,19 +47,28 @@ const register = asyncWrapper(async (req, res, next) => {
       expiresIn: "1d",
     }
   );
-
-  res.cookie("token", jwt, {
-    httpOnly: true,
-    secure: false,
-    sameSite: "lax",
-    maxAge: 24 * 60 * 60 * 1000,
-  });
+  let cookieOptions;
+  if (process.env.NODE_ENV === "prod") {
+    cookieOptions = {
+      httpOnly: true,
+      secure: true,
+      sameSite: "None",
+      maxAge: 24 * 60 * 60 * 1000,
+    };
+  } else {
+    cookieOptions = {
+      httpOnly: true,
+      secure: false,
+      sameSite: "Lax",
+      maxAge: 24 * 60 * 60 * 1000,
+    };
+  }
+  res.cookie("token", jwt, cookieOptions);
   await newUser.save();
   res.status(201).json({
     status: "success",
     data: {
-      user,
-      role: newUser.role,
+      newUser,
     },
   });
 });
@@ -95,13 +104,12 @@ const login = asyncWrapper(async (req, res, next) => {
     secure: false,
     sameSite: "Lax",
     maxAge: 24 * 60 * 60 * 1000,
-    path: "/api",
   });
 
   res.status(200).json({
     status: "success",
     data: {
-      msg: "Login Successful",
+      user,
     },
   });
 });

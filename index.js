@@ -5,7 +5,9 @@ const productsRouter = require("./routes/products.route");
 const httpStatusText = require("./utils/httpsStatusText");
 const usersRouter = require("./routes/users.route");
 const mailRouter = require("./routes/sendMail.route");
+const cartRouter = require("./routes/cart.route");
 const cookieParser = require("cookie-parser");
+const orderRouter = require("./routes/order.route");
 const cors = require("cors");
 require("dotenv").config();
 app.use(cookieParser());
@@ -19,9 +21,12 @@ app.use(
 
 const mongoose = require("mongoose");
 app.use(express.json());
+
 app.use("/api/products", productsRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/send-email", mailRouter);
+app.use("/api/cart", cartRouter);
+app.use("/api/orders", orderRouter);
 mongoose
   .connect(process.env.DB_URL)
   .then(() => console.log("DB connected successfully"));
