@@ -35,33 +35,29 @@ const getAllProducts = asyncWrapper(async (req, res) => {
 
 const addProduct = asyncWrapper(async (req, res, next) => {
   const { name, price, description, inStock } = req.body;
-  await cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-  });
-
   if (!name || !price || !description || !req.file) {
     return next(
       appError.create("Missing required fields", 400, httpsStatusText.FAIL)
     );
   }
-
+  await cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
   try {
-    const uploadFromBuffer = (fileBuffer) =>
-      new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
+    const uploadFromBuffer = async (fileBuffer) =>
+      await new Promise(async (resolve, reject) => {
+        const stream = await cloudinary.uploader.upload_stream(
           { folder: "products" },
           (error, result) => {
             if (error) reject(error);
             else resolve(result);
           }
         );
-        streamifier.createReadStream(fileBuffer).pipe(stream);
+        await streamifier.createReadStream(fileBuffer).pipe(stream);
       });
-
     const uploadResult = await uploadFromBuffer(req.file.buffer);
-
     const newProduct = new Product({
       name,
       price,
@@ -69,13 +65,8 @@ const addProduct = asyncWrapper(async (req, res, next) => {
       inStock: inStock ?? true,
       image: uploadResult.secure_url,
     });
-
     await newProduct.save();
-
-    res.status(201).json({
-      status: "success",
-      data: { product: newProduct },
-    });
+    res.status(201).json({ status: "success", data: { product: newProduct } });
   } catch (err) {
     return next(
       appError.create(
@@ -86,7 +77,6 @@ const addProduct = asyncWrapper(async (req, res, next) => {
     );
   }
 });
-
 const getOneProduct = asyncWrapper(async (req, res, next) => {
   const id = req.params.id;
   const product = await Product.findById(id);
