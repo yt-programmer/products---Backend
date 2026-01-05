@@ -41,30 +41,41 @@ const addProduct = asyncWrapper(async (req, res, next) => {
       appError.create("Missing required fields", 400, httpsStatusText.FAIL)
     );
   }
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-    secure: true,
-  });
 
-  const uploadResult = await cloudinary.uploader.upload(
-    `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`,
-    { folder: "products" }
-  );
+  try {
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+      secure: true,
+    });
 
-  const newProduct = await Product.create({
-    name,
-    price,
-    description,
-    inStock: inStock ?? true,
-    image: uploadResult.secure_url,
-  });
+    const uploadResult = await cloudinary.uploader.upload(
+      `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`,
+      { folder: "products" }
+    );
 
-  res.status(201).json({
-    status: "success",
-    data: { product: newProduct },
-  });
+    const newProduct = await Product.create({
+      name,
+      price,
+      description,
+      inStock: inStock || true,
+      image: uploadResult.secure_url,
+    });
+
+    res.status(201).json({
+      status: "success",
+      data: { product: newProduct },
+    });
+  } catch (err) {
+    return next(
+      appError.create(
+        `Image upload failed :${err.message}`,
+        500,
+        httpsStatusText.ERROR
+      )
+    );
+  }
 });
 
 const getOneProduct = asyncWrapper(async (req, res, next) => {
