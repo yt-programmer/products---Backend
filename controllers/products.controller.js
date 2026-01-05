@@ -3,7 +3,7 @@ const Product = require("../models/product.model");
 const httpsStatusText = require("../utils/httpsStatusText");
 const appError = require("../utils/appError");
 const streamifier = require("streamifier");
-const cloudinary = require("../cloudinary");
+const cloudinary = require("cloudinary").v2;
 
 const getAllProducts = asyncWrapper(async (req, res) => {
   const q = req.query;
@@ -45,6 +45,7 @@ const addProduct = asyncWrapper(async (req, res, next) => {
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET,
+    secure: true,
   });
 
   const uploadResult = await cloudinary.uploader.upload(
