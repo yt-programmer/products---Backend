@@ -2,6 +2,8 @@ const asyncWrapper = require("../middlewares/asyncWrapper");
 const Product = require("../models/product.model");
 const httpsStatusText = require("../utils/httpsStatusText");
 const appError = require("../utils/appError");
+const streamifier = require("streamifier");
+const cloudinary = require("cloudinary").v2;
 
 const getAllProducts = asyncWrapper(async (req, res) => {
   const q = req.query;
@@ -33,28 +35,56 @@ const getAllProducts = asyncWrapper(async (req, res) => {
 
 const addProduct = asyncWrapper(async (req, res, next) => {
   const { name, price, description, inStock } = req.body;
+  await cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
 
-  if (!name || !price || !description) {
+  if (!name || !price || !description || !req.file) {
     return next(
       appError.create("Missing required fields", 400, httpsStatusText.FAIL)
     );
   }
 
-  const newProduct = await new Product({
-    name: name,
-    price: price,
-    description: description,
-    inStock: inStock || true,
-    image: req.file ? `/uploads/${req.file.filename}` : null,
-  });
+  try {
+    const uploadFromBuffer = (fileBuffer) =>
+      new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder: "products" },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        );
+        streamifier.createReadStream(fileBuffer).pipe(stream);
+      });
 
-  await newProduct.save();
-  res.status(201).json({
-    status: "success",
-    data: {
-      product: newProduct,
-    },
-  });
+    const uploadResult = await uploadFromBuffer(req.file.buffer);
+
+    const newProduct = new Product({
+      name,
+      price,
+      description,
+      inStock: inStock ?? true,
+      image: uploadResult.secure_url,
+    });
+
+    await newProduct.save();
+
+    res.status(201).json({
+      status: "success",
+      data: { product: newProduct },
+    });
+  } catch (err) {
+    return next(
+      appError.create(
+        "Failed to upload image: " + err.message,
+        400,
+        httpsStatusText.FAIL
+      )
+    );
+  }
 });
 
 const getOneProduct = asyncWrapper(async (req, res, next) => {
