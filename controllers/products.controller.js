@@ -3,7 +3,7 @@ const Product = require("../models/product.model");
 const httpsStatusText = require("../utils/httpsStatusText");
 const appError = require("../utils/appError");
 const streamifier = require("streamifier");
-const cloudinary = require("cloudinary").v2;
+const cloudinary = require("../cloudinary");
 
 const getAllProducts = asyncWrapper(async (req, res) => {
   const q = req.query;
@@ -35,48 +35,37 @@ const getAllProducts = asyncWrapper(async (req, res) => {
 
 const addProduct = asyncWrapper(async (req, res, next) => {
   const { name, price, description, inStock } = req.body;
+
   if (!name || !price || !description || !req.file) {
     return next(
       appError.create("Missing required fields", 400, httpsStatusText.FAIL)
     );
   }
-  await cloudinary.config({
+  cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET,
   });
-  try {
-    const uploadFromBuffer = async (fileBuffer) =>
-      await new Promise(async (resolve, reject) => {
-        const stream = await cloudinary.uploader.upload_stream(
-          { folder: "products" },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
-          }
-        );
-        await streamifier.createReadStream(fileBuffer).pipe(stream);
-      });
-    const uploadResult = await uploadFromBuffer(req.file.buffer);
-    const newProduct = new Product({
-      name,
-      price,
-      description,
-      inStock: inStock ?? true,
-      image: uploadResult.secure_url,
-    });
-    await newProduct.save();
-    res.status(201).json({ status: "success", data: { product: newProduct } });
-  } catch (err) {
-    return next(
-      appError.create(
-        "Failed to upload image: " + err.message,
-        400,
-        httpsStatusText.FAIL
-      )
-    );
-  }
+
+  const uploadResult = await cloudinary.uploader.upload(
+    `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`,
+    { folder: "products" }
+  );
+
+  const newProduct = await Product.create({
+    name,
+    price,
+    description,
+    inStock: inStock ?? true,
+    image: uploadResult.secure_url,
+  });
+
+  res.status(201).json({
+    status: "success",
+    data: { product: newProduct },
+  });
 });
+
 const getOneProduct = asyncWrapper(async (req, res, next) => {
   const id = req.params.id;
   const product = await Product.findById(id);
